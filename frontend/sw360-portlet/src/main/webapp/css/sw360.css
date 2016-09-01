@@ -326,3 +326,10 @@ input[readonly].clickable {
     word-break: break-all;
     font-family: monospace;
 }
+
+.formatSelect {
+   width: 20em !important;
+   height: 25px !important;
+   margin-bottom: 0 !important;
+    padding:0 !important;
+}

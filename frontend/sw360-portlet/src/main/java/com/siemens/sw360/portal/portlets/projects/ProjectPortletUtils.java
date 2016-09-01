@@ -33,7 +33,6 @@ import com.siemens.sw360.portal.common.PortletUtils;
 import org.apache.log4j.Logger;
 
 import javax.portlet.PortletRequest;
-import javax.portlet.RenderRequest;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -99,13 +98,13 @@ public class ProjectPortletUtils {
         PortletUtils.setFieldValue(request, project, field, Project.metaDataMap.get(field), "");
     }
 
-    private static com.liferay.portal.model.User getLiferayUser(RenderRequest request, User user) throws PortalException, SystemException {
+    private static com.liferay.portal.model.User getLiferayUser(PortletRequest request, User user) throws PortalException, SystemException {
         ThemeDisplay themeDisplay = (ThemeDisplay) request.getAttribute(WebKeys.THEME_DISPLAY);
         long companyId = themeDisplay.getCompanyId();
         return UserLocalServiceUtil.getUserByEmailAddress(companyId, user.email);
     }
 
-    static void ensureUserCustomFieldExists(com.liferay.portal.model.User liferayUser, RenderRequest request) throws PortalException, SystemException {
+    static void ensureUserCustomFieldExists(com.liferay.portal.model.User liferayUser, PortletRequest request) throws PortalException, SystemException {
         ExpandoBridge exp = liferayUser.getExpandoBridge();
         if (!exp.hasAttribute(CUSTOM_FIELD_PROJECT_GROUP_FILTER)){
             exp.addAttribute(CUSTOM_FIELD_PROJECT_GROUP_FILTER, ExpandoColumnConstants.STRING, false);
@@ -128,7 +127,7 @@ public class ProjectPortletUtils {
         }
     }
 
-    static void saveStickyProjectGroup(RenderRequest request, User user, String groupFilterValue) {
+    static void saveStickyProjectGroup(PortletRequest request, User user, String groupFilterValue) {
         try {
             ExpandoBridge exp = getUserExpandoBridge(request, user);
             exp.setAttribute(CUSTOM_FIELD_PROJECT_GROUP_FILTER, groupFilterValue);
@@ -137,7 +136,7 @@ public class ProjectPortletUtils {
         }
     }
 
-    static String loadStickyProjectGroup(RenderRequest request, User user){
+    static String loadStickyProjectGroup(PortletRequest request, User user){
         try {
             ExpandoBridge exp = getUserExpandoBridge(request, user);
             return (String) exp.getAttribute(CUSTOM_FIELD_PROJECT_GROUP_FILTER);
@@ -147,7 +146,7 @@ public class ProjectPortletUtils {
         }
     }
 
-    private static ExpandoBridge getUserExpandoBridge(RenderRequest request, User user) throws PortalException, SystemException {
+    private static ExpandoBridge getUserExpandoBridge(PortletRequest request, User user) throws PortalException, SystemException {
         com.liferay.portal.model.User liferayUser = getLiferayUser(request, user);
         ensureUserCustomFieldExists(liferayUser, request);
         return liferayUser.getExpandoBridge();

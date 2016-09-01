@@ -22,6 +22,7 @@ import com.siemens.sw360.datahandler.common.SW360Constants;
 import com.siemens.sw360.datahandler.common.ThriftEnumUtils;
 import com.siemens.sw360.datahandler.thrift.DocumentState;
 import com.siemens.sw360.datahandler.thrift.RequestStatus;
+import com.siemens.sw360.datahandler.thrift.SW360Exception;
 import com.siemens.sw360.datahandler.thrift.Visibility;
 import com.siemens.sw360.datahandler.thrift.attachments.Attachment;
 import com.siemens.sw360.datahandler.thrift.components.ComponentService;
@@ -48,9 +49,7 @@ import org.apache.thrift.TException;
 
 import javax.portlet.*;
 import java.io.IOException;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -190,20 +189,12 @@ public class ProjectPortlet extends FossologyAwarePortlet {
     }
 
     private void exportExcel(ResourceRequest request, ResourceResponse response) {
-        final User user = UserCacheHolder.getUserFromRequest(request);
         try {
-            ProjectService.Iface client = thriftClients.makeProjectClient();
-            String searchText = request.getParameter(PortalConstants.KEY_SEARCH_TEXT);
-            List<Project> projects;
-            if (isNullOrEmpty(searchText)) {
-                projects = client.getAccessibleProjectsSummary(user);
-            } else {
-                projects = client.searchByName(searchText, user);
-            }
-
-            ProjectExporter exporter = new ProjectExporter(thriftClients.makeComponentClient());
+            boolean extendedExcelExport = Boolean.valueOf(request.getParameter(PortalConstants.EXTENDED_EXCEL_EXPORT));
+            List<Project> projects = getFilteredProjectList(request);
+            ProjectExporter exporter = new ProjectExporter(thriftClients.makeComponentClient(), extendedExcelExport);
             PortletResponseUtil.sendFile(request, response, "Projects.xlsx", exporter.makeExcelExport(projects), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        } catch (IOException | TException e) {
+        } catch (IOException | SW360Exception e) {
             log.error("An error occurred while generating the Excel export", e);
         }
     }
@@ -420,9 +411,19 @@ public class ProjectPortlet extends FossologyAwarePortlet {
     }
 
     private void prepareStandardView(RenderRequest request) throws IOException {
-
         String searchtext = request.getParameter(KEY_SEARCH_TEXT);
+        String searchfilter = request.getParameter(KEY_SEARCH_FILTER_TEXT);
+        List<Project> projectList = getFilteredProjectList(request);
 
+        request.setAttribute(PROJECT_LIST, projectList);
+        request.setAttribute(KEY_SEARCH_TEXT, searchtext);
+        request.setAttribute(KEY_SEARCH_FILTER_TEXT, searchfilter);
+        List<Organization> organizations = UserUtils.getOrganizations(request);
+        request.setAttribute(PortalConstants.ORGANIZATIONS, organizations);
+    }
+
+    private List<Project> getFilteredProjectList(PortletRequest request) throws IOException {
+        String searchtext = request.getParameter(KEY_SEARCH_TEXT);
         String searchfilter = request.getParameter(KEY_SEARCH_FILTER_TEXT);
 
         Map<String, Set<String>> filterMap = new HashMap<>();
@@ -436,40 +437,33 @@ public class ProjectPortlet extends FossologyAwarePortlet {
 
         List<Project> projectList;
 
+
+        final User user = UserCacheHolder.getUserFromRequest(request);
+        ProjectService.Iface projectClient = thriftClients.makeProjectClient();
+
+        String groupFilterValue = request.getParameter(Project._Fields.BUSINESS_UNIT.toString());
+        if (null == groupFilterValue) {
+            addStickyProjectGroupToFilters(request, user, filterMap);
+        } else {
+            ProjectPortletUtils.saveStickyProjectGroup(request, user, groupFilterValue);
+        }
         try {
-            final User user = UserCacheHolder.getUserFromRequest(request);
-            ProjectService.Iface projectClient = thriftClients.makeProjectClient();
-
-            String groupFilterValue = request.getParameter(Project._Fields.BUSINESS_UNIT.toString());
-            if (null == groupFilterValue) {
-                addStickyProjectGroupToFilters(request, user, filterMap);
-            } else {
-                ProjectPortletUtils.saveStickyProjectGroup(request, user, groupFilterValue);
-            }
-
             if (isNullOrEmpty(searchtext) && filterMap.isEmpty()) {
                 projectList = projectClient.getAccessibleProjectsSummary(user);
             } else {
                 projectList = projectClient.refineSearch(searchtext, filterMap, user);
             }
-            for(Project project:projectList){
+            for (Project project : projectList) {
                 setClearingStateSummary(project);
             }
-
         } catch (TException e) {
             log.error("Could not search projects in backend ", e);
             projectList = Collections.emptyList();
         }
-
-        request.setAttribute(PROJECT_LIST, projectList);
-        request.setAttribute(KEY_SEARCH_TEXT, searchtext);
-        request.setAttribute(KEY_SEARCH_FILTER_TEXT, searchfilter);
-        List<Organization> organizations = UserUtils.getOrganizations(request);
-        request.setAttribute(PortalConstants.ORGANIZATIONS, organizations);
-
+        return projectList;
     }
 
-    private void addStickyProjectGroupToFilters(RenderRequest request, User user, Map<String, Set<String>> filterMap){
+    private void addStickyProjectGroupToFilters(PortletRequest request, User user, Map<String, Set<String>> filterMap){
         String stickyGroupFilter = ProjectPortletUtils.loadStickyProjectGroup(request, user);
         if (!isNullOrEmpty(stickyGroupFilter)){
             String groupFieldName = Project._Fields.BUSINESS_UNIT.getFieldName();
