@@ -46,6 +46,7 @@ public class ReleaseSummary extends DocumentSummary<Release> {
             copyField(document, copy, _Fields.COMPONENT_ID);
             copyField(document, copy, _Fields.CLEARING_TEAM_TO_FOSSOLOGY_STATUS);
             copyField(document, copy, _Fields.FOSSOLOGY_ID);
+            copyField(document, copy, _Fields.RELEASE_ID_TO_RELATIONSHIP);
 
             if (type != SummaryType.SHORT) {
                 copyField(document, copy, _Fields.CPEID);
