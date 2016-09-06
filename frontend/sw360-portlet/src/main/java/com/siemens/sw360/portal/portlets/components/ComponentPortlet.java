@@ -22,7 +22,6 @@ import com.siemens.sw360.datahandler.thrift.DocumentState;
 import com.siemens.sw360.datahandler.thrift.RequestStatus;
 import com.siemens.sw360.datahandler.thrift.attachments.Attachment;
 import com.siemens.sw360.datahandler.thrift.components.*;
-import com.siemens.sw360.datahandler.thrift.licenses.License;
 import com.siemens.sw360.datahandler.thrift.projects.Project;
 import com.siemens.sw360.datahandler.thrift.projects.ProjectService;
 import com.siemens.sw360.datahandler.thrift.users.RequestedAction;
@@ -216,7 +215,6 @@ public class ComponentPortlet extends FossologyAwarePortlet {
                 components = client.getComponentSummaryForExport();
             } else {
                 components = client.searchComponentForExport(searchText);
-
             }
 
             ComponentExporter exporter = new ComponentExporter();

@@ -190,9 +190,14 @@ public class ProjectPortlet extends FossologyAwarePortlet {
 
     private void exportExcel(ResourceRequest request, ResourceResponse response) {
         try {
-            boolean extendedExcelExport = Boolean.valueOf(request.getParameter(PortalConstants.EXTENDED_EXCEL_EXPORT));
+            User user = UserCacheHolder.getUserFromRequest(request);
+            boolean isExtendedExcelExport = Boolean.valueOf(request.getParameter(PortalConstants.EXTENDED_EXCEL_EXPORT));
             List<Project> projects = getFilteredProjectList(request);
-            ProjectExporter exporter = new ProjectExporter(thriftClients.makeComponentClient(), extendedExcelExport);
+            ProjectExporter exporter = new ProjectExporter(
+                    thriftClients.makeComponentClient(),
+                    thriftClients.makeProjectClient(),
+                    user,
+                    isExtendedExcelExport);
             PortletResponseUtil.sendFile(request, response, "Projects.xlsx", exporter.makeExcelExport(projects), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         } catch (IOException | SW360Exception e) {
             log.error("An error occurred while generating the Excel export", e);
@@ -424,7 +429,6 @@ public class ProjectPortlet extends FossologyAwarePortlet {
 
     private List<Project> getFilteredProjectList(PortletRequest request) throws IOException {
         String searchtext = request.getParameter(KEY_SEARCH_TEXT);
-        String searchfilter = request.getParameter(KEY_SEARCH_FILTER_TEXT);
 
         Map<String, Set<String>> filterMap = new HashMap<>();
         for (Project._Fields filteredField : projectFilteredFields) {
